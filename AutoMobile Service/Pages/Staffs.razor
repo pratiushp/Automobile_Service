@@ -1,0 +1,218 @@
+﻿@page "/staffs"
+@using AutoMobile_Service.Data;
+@using AutoMobile_Service.Services;
+
+<main>
+    <div>
+        <h3 class="font-bold text-2xl">Staff</h3>
+        <button @onclick='()=>DisplayActionDialogbox = true'><span class="oi oi-plus"></span> Add Staff</button>
+    </div>
+
+    <table>
+        <thead class="text-black">
+            <tr >
+                <th class "text-black font-bold">Full Name</th>
+                <th class "text-black font-bold">Username</th>
+                <th class "text-black font-bold">Type</th>
+                <th class "text-black font-bold">Registered By</th>
+                <th class "text-black font-bold">Registered At</th>
+                <th class "text-black font-bold">Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.FirstName @user.LastName</td>
+                    <td>@user.UserName</td>
+                    <td>@user.UType</td>
+                    <td>
+                        @{
+                            var registrar = UserService.FetchUserById(user.RegisterdBy);
+                            <span>@(registrar == null ? "system" : registrar.UserName)</span>
+                        }
+                    </td>
+                    <td>@user.RegisteredAt.ToString("dd MMM, yyyy hh:mm tt")</td>
+
+                    <td>
+                        @if (globalUser.CurrentUser != null ? globalUser.CurrentUser.Id != user.Id : false)
+                        {
+                            <button class="delete" @onclick='()=> OpenDeleteDialog(user)' disabled='@(user.UType == UserType.Admin ? true : false)'><span class="oi oi-delete"></span>Delete</button>
+                        }
+                        else
+                        {
+                            <NavLink class="changePassword" href="update"><span class="oi oi-pencil"></span> Update</NavLink>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (DisplayActionDialogbox)
+    {
+        <section class="action-modal">
+            <section class="background" @onclick='()=>DisplayActionDialogbox = false'></section>
+            <div>
+                <h3 class="text-black">Add User</h3>
+
+                @if (addErrorMessage.Length > 0)
+                {
+                    <p><span class="oi oi-warning"></span> @addErrorMessage</p>
+                }
+
+                <form @onsubmit="HandleAddUser">
+                    <section class="flex-column">
+                        <label> First Name</label>
+                        <input type="text" @bind="first_Name" placeholder="First Name" />
+                        <label> Last Name</label>
+                        <input type="text" @bind="last_Name" placeholder="Last Name" />
+
+
+                        <label> Username</label>
+                    <input type="text" @bind="user_Name" placeholder="Username" />
+                        <label> Password</label>
+                    <input type="@passType" @bind="password" placeholder="Password" />
+                        <label> Confirm Password</label>
+                    <input type="@passType" @bind="confirmPassword" placeholder="Confirm Password" />
+                        </section>
+
+
+                    <div>
+                        <label for="admin-radio">
+                            <span>Admin</span>
+                            <input type="radio" value="@UserType.Admin" id="admin-radio" @onchange="UserTypeChangeHandler" checked="@(user_Type == UserType.Admin)" />
+                        </label>
+
+                        <label for="staff-radio">
+                            <span>Staff</span>
+                            <input type="radio" value="@UserType.Staff" id="staff-radio" @onchange="UserTypeChangeHandler" checked="@(user_Type == UserType.Staff)" />
+                        </label>
+                    </div>
+
+                    <label for="showPass">
+                        <input type="checkbox" id="showPass" @onchange="HandlePass" />
+                        <span>Show Password</span>
+                    </label>
+
+                    <button>Add User</button>
+                </form>
+            </div>
+        </section>
+    }
+
+    @if (DisplayDeleteDialogbox)
+    {
+        <div class="delete-dialog-wrapper">
+            <section class="delete-background" @onclick='@(()=> DisplayDeleteDialogbox = false)'></section>
+
+            <section class="delete-dialog @DisplayDeleteDialogbox-dialog">
+                <h2>Delete User</h2>
+                @if (!string.IsNullOrEmpty(deleteErrorMessage))
+                {
+                    <p><span class="oi oi-warning"></span>@deleteErrorMessage</p>
+                }
+                <p>Are you sure you want to delete <strong>@delete_User.FirstName @delete_User.LastName</strong></p>
+                <p><strong>Note: </strong> All the record of items involving <strong>@delete_User.FirstName @delete_User.LastName</strong> will also be deleted.</p>
+
+                <div>
+                    <button class="cancel" @onclick='@(()=> DisplayDeleteDialogbox = false)'>Cancel</button>
+                    <button @onclick='()=> HandleDelete(delete_User)'>Delete</button>
+                </div>
+            </section>
+        </div>
+    }
+
+</main>
+
+@code {
+    [CascadingParameter]
+    private GlobalUser globalUser { get; set; }
+    private List<UserModel> users { get; set; }
+    private bool DisplayActionDialogbox { get; set; } = false;
+    private bool DisplayDeleteDialogbox { get; set; } = false;
+
+    private string user_Name { get; set; }
+    private string password { get; set; }
+    private string confirmPassword { get; set; }
+    private string first_Name { get; set; }
+    private string last_Name { get; set; }
+    private UserType user_Type { get; set; }
+    private UserModel delete_User { get; set; }
+
+    string passType = "password";
+    string addErrorMessage = "";
+    string deleteErrorMessage = "";
+
+    protected override void OnInitialized()
+    {
+        users = UserService.FetchUsers();
+    }
+
+    public void HandleAddUser()
+    {
+        if (user_Name == null || password == null || confirmPassword == null || first_Name == null || last_Name == null)
+        {
+            addErrorMessage = "Please provide complete data!";
+            return;
+        }
+
+        if (password != confirmPassword)
+        {
+            addErrorMessage = "Please confirm password!";
+            return;
+        }
+
+        try
+        {
+            users = UserService.RegisterUser(globalUser.CurrentUser.Id, user_Name, first_Name, last_Name, password, user_Type);
+            first_Name = "";
+            last_Name = "";
+            user_Name = "";
+            password = "";
+            confirmPassword = "";
+            passType = "password";
+            DisplayActionDialogbox = false;
+        }
+        catch (Exception e)
+        {
+            addErrorMessage = e.Message;
+        }
+
+    }
+
+    public void OpenDeleteDialog(UserModel user)
+    {
+        delete_User = user;
+        DisplayDeleteDialogbox = true;
+    }
+
+    public void HandleDelete(UserModel user)
+    {
+        if (user.UType == UserType.Admin)
+        {
+            deleteErrorMessage = "Admin cannot be deleted";
+        }
+
+        try
+        {
+            users = UserService.DeleteUser(user.Id);
+            DisplayDeleteDialogbox = false;
+        }
+        catch (Exception e)
+        {
+            deleteErrorMessage = e.Message;
+        }
+    }
+
+    public void UserTypeChangeHandler(ChangeEventArgs e)
+    {
+        user_Type = (UserType)Enum.Parse(typeof(UserType), e.Value.ToString());
+    }
+
+    public void HandlePass()
+    {
+        passType = passType == "password" ? "text" : "password";
+    }
+}

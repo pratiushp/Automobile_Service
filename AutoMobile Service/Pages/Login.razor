@@ -1,0 +1,104 @@
+﻿@page "/login"
+@inject NavigationManager NavManager
+@using System.Data;
+@using AutoMobile_Service.Data;
+@using AutoMobile_Service.Services;
+
+<main class="">
+    <div class="container  m-2 p-2">
+        <h1 class="font-bold text-black content-center text-2xl py-12">Automobile Service Center</h1>
+        <div class="loginbody">
+            @if (showCredentialHint)
+            {
+                <div class="alert alert-info" role="alert">
+                    <h2 class="text-black font-bold">Default</h2>
+                    <p class="fw-bold">Username : admin</p>
+                    <p class="fw-bold">Password : admin</p>
+                  </div>
+            }
+            <h1 class="text-blue-500">Login Here</h1>
+            <form class="loginmsg" @onsubmit="handleLogin">
+                @if (message.Length > 0)
+                {
+                    <p>
+                        <span class="oi oi-warning"></span>
+                        @message
+                    </p>
+
+                }
+
+
+                <label class="font-bold">Username:</label>
+                <input type="text" @bind="@user_Name" placeholder="Username" class="rounded-sm" />
+
+                <label class="font-bold">Password:</label>
+                <input type="@passType" @bind="@password" placeholder="Password" class="rounded-sm" />
+
+               
+
+
+                <button>
+                    <span class="@loginStatus"></span> Login
+                </button>
+            </form>
+        </div>
+    </div>
+</main>
+
+@code {
+    [CascadingParameter]
+    private GlobalUser globalUser { get; set; }
+    private bool displayDefaultCredential { get; set; }
+    private string user_Name { get; set; }
+    private string password { get; set; }
+    private bool showCredentialHint { get; set; }
+    public string message = "";
+    public string passType = "password";
+    public string loginStatus = "oi oi-account-login";
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            var user = UserService.Login(UserService.DefaultUserName, UserService.DefaultPassword);
+            showCredentialHint = user.HasInitialPassword;
+        }
+        catch { }
+
+        globalUser.CurrentUser = null;
+        message = "";
+    }
+
+    public void handlePassword()
+    {
+        passType = passType == "password" ? "text" : "password";
+    }
+
+    public void handleLogin()
+    {
+        loginStatus = "spinner-border spinner-border-sm";
+
+        if (user_Name == null || password == null)
+        {
+            message = "Please provide complete credentials!";
+            loginStatus = "oi oi-account-login";
+            return;
+        }
+
+        try
+        {
+            globalUser.CurrentUser = UserService.Login(user_Name, password);
+
+            if (globalUser.CurrentUser != null)
+            {
+                NavManager.NavigateTo(globalUser.CurrentUser.HasInitialPassword ? "/Dashboard" : "/");
+            }
+        }
+        catch (Exception e)
+        {
+            message = e.Message;
+        }
+
+        loginStatus = "oi oi-account-login";
+    }
+}

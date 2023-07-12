@@ -1,0 +1,265 @@
+﻿@page "/item"
+@using AutoMobile_Service.Data;
+@using AutoMobile_Service.Services;
+
+<main>
+    <div class="flex">
+        <h3>Items</h3>
+        @if (globalUser.CurrentUser != null ? globalUser.CurrentUser.UType == UserType.Admin : false)
+        {
+            <button @onclick="HandleAddActionDialog"><span class="oi oi-plus"></span> Add Item</button>
+        }
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Date Added</th>
+                <th>Added By</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (items != null && items.Count > 0)
+            {
+                @foreach (var item in items)
+                {
+                    <tr>
+                        <td>@item.Name</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.UnitPrice</td>
+                        <td>@item.DateAdded.ToString(" MMM dd, yyyy")</td>
+                        <td>
+                            @{
+                                var addedBy = UserService.FetchUserById(item.AddedBy);
+                                <span>
+                                    @(
+                                    addedBy == null ? "system" : (addedBy.FirstName + ' ' + addedBy.LastName)
+                                        )
+                                </span>
+                            }
+                        </td>
+
+                        <td class="flex font-bold">
+                            @if (globalUser.CurrentUser != null ? globalUser.CurrentUser.UType == UserType.Admin : false)
+                            {
+                                <button class="delete" @onclick="()=>HandleDeleteDialog(item)"><span class="oi oi-trash"></span></button>
+                                <button class="edit" @onclick='()=>HandleUpdateActionDialog(item)'><span class="oi oi-pencil"></span></button>
+                            }
+
+                            <button class="takeout" @onclick="()=>HandleTakeOutDialog(item)"><span class="oi oi-clipboard"></span>Request</button>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr class="emptyTable"></tr>
+            }
+        </tbody>
+    </table>
+
+    @if (DisplayActionDialogbox)
+    {
+        <section class="action-modal">
+            <section class="background" @onclick='()=>DisplayActionDialogbox = false'></section>
+            <div>
+                <h3 class="text-black">@(action_Modal.Id == Guid.Empty ? "Add" : "Update") Item</h3>
+
+                @if (actionErrorMessagebox.Length > 0)
+                {
+                    <p><span class="oi oi-warning"></span> @actionErrorMessagebox</p>
+                }
+
+                <form @onsubmit="HandleActionSubmit">
+                    <input type="text" @bind="action_Modal.Name" placeholder="Item Name" />
+                    <div class="flex space-x-4">
+                    <label for="qty">
+                        Quantity
+                        <input type="number" @bind="action_Modal.Quantity" placeholder="Quantity" id="qty" />
+                    </label>
+
+                    <label for="up">
+                        Unit Price
+                        <input type="number" @bind="action_Modal.UnitPrice" placeholder="Unit Price" id="up" />
+                    </label>
+                        </div>
+
+                    <button>@(action_Modal.Id == Guid.Empty ? "Add" : "Update") Item</button>
+                </form>
+            </div>
+        </section>
+    }
+
+    @if (DisplayDeleteDialogbox)
+    {
+        <div class="delete-dialog-wrapper">
+            <section class="background" @onclick="@(()=> DisplayDeleteDialogbox = false)"></section>
+
+            <section class="delete-dialog">
+                <h2>Delete Item</h2>
+                @if (!string.IsNullOrEmpty(deleteErrorMessagebox))
+                {
+                    <p><span class="oi oi-warning"></span>@deleteErrorMessagebox</p>
+                }b
+                <p>Are you sure you want to delete <strong>@delete_Item.Name</strong>?</p>
+                
+
+                <div>
+                    <button class="cancel" @onclick="@(()=> DisplayDeleteDialogbox = false)">Cancel</button>
+                    <button @onclick="(()=>HandleDelete(delete_Item.Id))">Delete</button>
+                </div>
+            </section>
+        </div>
+    }
+
+    @if (DisplayTakeOutDialogbox)
+    {
+        <div class="takeout-dialog-wrapper">
+            <section class="background" @onclick="@CloseTakeOutDialog"></section>
+            <section class="takeout-dialog">
+                <h2>Request - @(take_Item.Name)</h2>
+                @if (!string.IsNullOrEmpty(takeOutErrorMessage))
+                {
+                    <p><span class="oi oi-warning"></span>@takeOutErrorMessage</p>
+                }
+                <input type="number" placeholder="Quantity" @bind="take_ItemQuantity" />
+
+                <div>
+                    <button @onclick="@HandleTakeOut">Request</button>
+                    <button @onclick="@CloseTakeOutDialog">Cancel</button>
+                </div>
+            </section>
+        </div>
+    }
+
+</main>
+
+@code {
+    [CascadingParameter]
+    private GlobalUser globalUser { get; set; }
+    private List<ItemModel> items { get; set; }
+    private bool DisplayActionDialogbox { get; set; }
+    private bool DisplayDeleteDialogbox { get; set; }
+    private bool DisplayTakeOutDialogbox { get; set; }
+    private ItemModel delete_Item { get; set; }
+    private ItemModel take_Item { get; set; }
+    private int take_ItemQuantity { get; set; }
+    private Guid take_ItemId { get; set; }
+    private ItemModel action_Modal { get; set; }
+    string actionErrorMessagebox = "";
+    string deleteErrorMessagebox = "";
+    string takeOutErrorMessage = "";
+
+    protected override void OnInitialized()
+    {
+        items = ItemService.FetchItem();
+    }
+
+    public void HandleAddActionDialog()
+    {
+        action_Modal = new ItemModel();
+        action_Modal.Id = Guid.Empty;
+        DisplayActionDialogbox = true;
+    }
+
+    public void HandleUpdateActionDialog(ItemModel item)
+    {
+        action_Modal = item;
+        DisplayActionDialogbox = true;
+    }
+
+    public void HandleDeleteDialog(ItemModel item)
+    {
+        delete_Item = item;
+        DisplayDeleteDialogbox = true;
+    }
+
+    public void HandleTakeOutDialog(ItemModel item)
+    {
+        take_Item = item;
+        take_ItemId = item.Id;
+        DisplayTakeOutDialogbox = true;
+    }
+
+    public void CloseTakeOutDialog()
+    {
+        DisplayTakeOutDialogbox = false;
+        takeOutErrorMessage = "";
+        take_ItemQuantity = 0;
+    }
+
+    public void HandleDelete(Guid id)
+    {
+        try
+        {
+            deleteErrorMessagebox = "";
+            items = ItemService.DeleteItem(id);
+            delete_Item = null;
+            DisplayDeleteDialogbox = false;
+        }
+        catch (Exception e)
+        {
+            deleteErrorMessagebox = e.Message;
+        }
+    }
+
+    public void HandleActionSubmit()
+    {
+        if (string.IsNullOrEmpty(action_Modal.Name))
+        {
+            actionErrorMessagebox = "Please give item name!";
+            return;
+        }
+
+        if (action_Modal.Quantity < 1 || action_Modal.UnitPrice < 1)
+        {
+            actionErrorMessagebox = "Quantity and unit price must be greater than 1!";
+            return;
+        }
+
+        try
+        {
+            actionErrorMessagebox = "";
+
+            if (action_Modal.Id == Guid.Empty)
+            {
+                items = ItemService.AddItem(globalUser.CurrentUser.Id, action_Modal.Name, action_Modal.Quantity, action_Modal.UnitPrice);
+            }
+            else
+            {
+                items = ItemService.UpdateItem(action_Modal.Id, action_Modal.Name, action_Modal.Quantity, action_Modal.UnitPrice);
+            }
+
+            DisplayActionDialogbox = false;
+        }
+        catch (Exception e)
+        {
+            actionErrorMessagebox = e.Message;
+        }
+    }
+
+    public void HandleTakeOut()
+    {
+        if (take_ItemQuantity < 1)
+        {
+            takeOutErrorMessage = "Take out quantity must be atleast 1!";
+            return;
+        }
+
+        try
+        {
+            items = ItemService.TakeOutItem(take_ItemId, globalUser.CurrentUser.Id, take_ItemQuantity);
+            DisplayTakeOutDialogbox = false;
+            take_ItemQuantity = 0;
+        }
+        catch (Exception e)
+        {
+            takeOutErrorMessage = e.Message;
+        }
+    }
+}

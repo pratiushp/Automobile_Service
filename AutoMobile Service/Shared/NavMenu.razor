@@ -1,0 +1,84 @@
+﻿@using AutoMobile_Service.Data;
+@using AutoMobile_Service.Services;
+
+<div class="top-row ps-3 navbar">
+    <div class="container-fluid ">
+        <a class="navbar-brand text-white text-2xl font-bold" href=""> AutoMobile Service</a>
+    </div>
+</div>
+
+<section class='@(navCollapse != null ? "nav-back" : "")' @onclick="ToggleNavMenu"></section>
+<div class="nav @navCollapse" @onclick="ToggleNavMenu">
+    <nav class="flex-column  h-screen">
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dashboard" Match="NavLinkMatch.All">
+                <span class="oi oi-bar-chart text-white 	0.75rem" aria-hidden="true"></span>
+                <p class="text-white text-1xl"> Chart</p>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="item" Match="NavLinkMatch.All">
+                <span class="oi oi-grid-four-up text-white" aria-hidden="true"></span>
+                <p class="text-white text-1xl"> Items</p>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="staffs">
+                <span class="oi oi-people text-white" aria-hidden="true"></span>
+                <p class="text-white text-1xl"> Staff</p>
+            </NavLink>
+        </div>
+
+        @if (userType == UserType.Admin)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="record" Match="NavLinkMatch.All">
+                    <span class="oi oi-book text-white" aria-hidden="true"></span>
+                    <p class="text-white text-1xl"> Records</p>
+                </NavLink>
+            </div>
+
+             <div class="nav-item px-3">
+                <NavLink class="nav-link" href="request" Match="NavLinkMatch.All">
+                    <span class="oi oi-key text-white" aria-hidden="true"></span>
+                    <p class="text-white text-1xl"> Request</p>
+                </NavLink>
+            </div>
+
+            
+        }
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="update">
+                <span class="oi oi-pencil text-white" aria-hidden="true"></span>
+                <p class="text-white text-1xl"> Update Details</p>
+            </NavLink>
+        </div>
+        <br><br />
+        <div class="nav-item px-3 last-menu font-bold">
+            <button class="logout text-red-500" @onclick="HandleLogout"><span class="oi oi-account-logout text-red-500" /> Logout</button>
+        </div>
+    </nav>
+</div>
+
+@code {
+    [Parameter]
+    public string username { get; set; }
+    [Parameter]
+    public UserType userType { get; set; }
+    [Parameter]
+    public EventCallback HandleLogout { get; set; }
+
+    string navCollapse = null;
+
+    private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        navCollapse = navCollapse == "navCollapse" ? null : "navCollapse";
+    }
+}
